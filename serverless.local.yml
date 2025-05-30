@@ -1,0 +1,89 @@
+service: laravel-serverless-local
+
+frameworkVersion: '3'
+
+useDotenv: true
+dotenvPath: .env.local
+
+provider:
+  name: aws
+  runtime: provided.al2
+  region: ${opt:region, 'us-east-1'}
+  stage: ${opt:stage, 'local'}
+  
+  # LocalStack configuration for local testing
+  endpoints:
+    S3: http://localstack:4566
+    DynamoDB: http://localstack:4566
+    CloudFormation: http://localstack:4566
+    CloudWatch: http://localstack:4566
+    CloudWatchLogs: http://localstack:4566
+    CloudWatchEvents: http://localstack:4566
+    Lambda: http://localstack:4566
+    ApiGateway: http://localstack:4566
+    ApiGatewayV2: http://localstack:4566
+
+  environment:
+    APP_ENV: local
+    APP_DEBUG: true
+    APP_KEY: base64:vBmRZp7yn1NPZF1iFA/4MkYMMse55Dwd86KAia3e9gE=
+    DB_CONNECTION: sqlite
+    DB_DATABASE: /tmp/database.sqlite
+    AWS_DEFAULT_REGION: us-east-1
+    CACHE_DRIVER: array
+    SESSION_DRIVER: array
+    QUEUE_CONNECTION: sync
+    BREF_BINARY_RESPONSES: 1
+
+plugins:
+  - serverless-offline
+  - serverless-localstack
+
+custom:
+  # Serverless Offline configuration
+  serverless-offline:
+    httpPort: 3000
+    host: 0.0.0.0
+    stage: local
+    prefix: ''
+    printOutput: true
+    
+  # LocalStack configuration
+  localstack:
+    stages:
+      - local
+    host: http://localstack
+    edgePort: 4566
+    autostart: false
+
+functions:
+  # Web function for HTTP requests
+  web:
+    handler: public/index.php
+    runtime: provided.al2
+    timeout: 28
+    layers:
+      - arn:aws:lambda:us-east-1:534081306603:layer:php-84-fpm:22
+    events:
+      - httpApi: '*'
+    environment:
+      APP_ENV: local
+
+  # Artisan function for CLI commands
+  artisan:
+    handler: artisan-lambda.php
+    runtime: provided.al2
+    timeout: 120
+    layers:
+      - arn:aws:lambda:us-east-1:534081306603:layer:php-84:138
+    environment:
+      APP_ENV: local
+
+# Package configuration
+package:
+  patterns:
+    - '!node_modules/**'
+    - '!tests/**'
+    - '!storage/logs/**'
+    - '!.env*'
+    - '!.git/**'

@@ -1,0 +1,69 @@
+service: laravel-serverless-env
+
+provider:
+    name: aws
+    region: us-east-1
+    runtime: provided.al2023
+    stage: ${opt:stage, 'dev'}
+    environment:
+        # Environment variables for Laravel
+        APP_ENV: ${file(env.${self:provider.stage}.yml):APP_ENV, 'production'}
+        APP_KEY: ${file(env.${self:provider.stage}.yml):APP_KEY}
+        APP_DEBUG: ${file(env.${self:provider.stage}.yml):APP_DEBUG, 'false'}
+        DB_CONNECTION: ${file(env.${self:provider.stage}.yml):DB_CONNECTION}
+        DB_HOST: ${file(env.${self:provider.stage}.yml):DB_HOST}
+        DB_DATABASE: ${file(env.${self:provider.stage}.yml):DB_DATABASE}
+        DB_USERNAME: ${file(env.${self:provider.stage}.yml):DB_USERNAME}
+        DB_PASSWORD: ${file(env.${self:provider.stage}.yml):DB_PASSWORD}
+        CACHE_DRIVER: ${file(env.${self:provider.stage}.yml):CACHE_DRIVER, 'array'}
+        SESSION_DRIVER: ${file(env.${self:provider.stage}.yml):SESSION_DRIVER, 'cookie'}
+        QUEUE_CONNECTION: ${file(env.${self:provider.stage}.yml):QUEUE_CONNECTION, 'sqs'}
+
+plugins:
+    - ./vendor/bref/bref
+
+functions:
+    # Laravel web application
+    web:
+        handler: public/index.php
+        runtime: php-84-fpm
+        events:
+            - httpApi: '*'
+        layers:
+            - ${bref:layer.php-84-fpm}
+        environment:
+            BREF_BINARY_RESPONSES: 1
+
+    # Laravel artisan commands
+    artisan:
+        handler: artisan-lambda.php
+        runtime: php-84
+        timeout: 120
+        layers:
+            - ${bref:layer.php-84}
+
+constructs:
+    website:
+        type: server-side-website
+        assets:
+            '/js/*': public/build/assets/
+            '/css/*': public/build/assets/
+            # Add your static assets here
+
+# Exclude files from deployment
+package:
+    patterns:
+        - '!tests/**'
+        - '!node_modules/**'
+        - '!storage/logs/**'
+        - '!.env'
+        - '!.env.*'
+        - '!docker-compose.yml'
+        - '!phpunit.xml'
+        - '!README.md'
+        - '!package.json'
+        - '!package-lock.json'
+        - '!tailwind.config.js'
+        - '!vite.config.ts'
+        - '!tsconfig.json'
+        - '!eslint.config.js'

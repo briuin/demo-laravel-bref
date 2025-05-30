@@ -1,0 +1,93 @@
+version: '3.8'
+
+services:
+  # LocalStack - AWS services emulator
+  localstack:
+    image: localstack/localstack:latest
+    container_name: localstack
+    ports:
+      - "4566:4566"  # LocalStack edge port
+      - "4510-4559:4510-4559"  # external services port range
+    environment:
+      - SERVICES=lambda,s3,dynamodb,sqs,sns,apigateway,cloudformation,logs,iam
+      - DEBUG=1
+      - DATA_DIR=/var/lib/localstack
+      - LAMBDA_EXECUTOR=docker
+      - LAMBDA_DOCKER_NETWORK=test-env_default
+      - HOST_TMP_FOLDER=/var/lib/localstack/tmp
+    volumes:
+      - "localstack_data:/var/lib/localstack"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    networks:
+      - serverless-local
+
+  # Laravel app for local development
+  laravel-local:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.local
+    container_name: laravel-local
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_ENV=local
+      - APP_DEBUG=true
+      - DB_CONNECTION=sqlite
+      - DB_DATABASE=/app/database/database.sqlite
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_ENDPOINT_URL=http://localstack:4566
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+    volumes:
+      - .:/app
+      - ./storage:/app/storage
+    depends_on:
+      - localstack
+    networks:
+      - serverless-local
+    command: php artisan serve --host=0.0.0.0 --port=8000
+
+  # Serverless local testing container
+  serverless-local:
+    image: php:8.2-fpm-alpine
+    container_name: serverless-local
+    ports:
+      - "3000:9000"
+    environment:
+      - APP_NAME=Laravel Serverless Local
+      - APP_ENV=local
+      - APP_KEY=base64:RIDHVHIBfZUD7dTyt8KKVKQVhmtaYpJX95WLnn8HOPk=
+      - APP_DEBUG=true
+      - APP_URL=http://localhost:3000
+      - LOG_CHANNEL=stderr
+      - LOG_LEVEL=debug
+      - DB_CONNECTION=sqlite
+      - DB_DATABASE=/app/database/database.sqlite
+      - CACHE_DRIVER=array
+      - SESSION_DRIVER=array
+      - QUEUE_CONNECTION=sync
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_ENDPOINT_URL=http://localstack:4566
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_BUCKET=laravel-serverless-local
+      - BREF_BINARY_RESPONSES=1
+      - LAMBDA_TASK_ROOT=/app
+      - LAMBDA_RUNTIME_DIR=/var/runtime
+      - AWS_LAMBDA_RUNTIME_API=127.0.0.1:9001
+    volumes:
+      - .:/app
+    depends_on:
+      - localstack
+    networks:
+      - serverless-local
+    working_dir: /app
+    command: ["php", "-S", "0.0.0.0:9000", "-t", "public"]
+
+networks:
+  serverless-local:
+    driver: bridge
+
+volumes:
+  localstack_data:
+    driver: local

@@ -1,0 +1,13 @@
+# Serverless Testing Configuration
+serverless.local.yml
+.env.local
+.localstack/
+
+# Docker volumes
+/tmp/localstack/
+
+# Node modules for serverless testing
+node_modules/
+
+# Serverless offline
+.serverless/

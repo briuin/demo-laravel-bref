@@ -1,0 +1,61 @@
+# Use Node.js for Serverless Framework
+FROM node:18-slim
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    python3 \
+    python3-pip \
+    curl \
+    zip \
+    unzip \
+    git \
+    php8.2 \
+    php8.2-cli \
+    php8.2-curl \
+    php8.2-mbstring \
+    php8.2-xml \
+    php8.2-zip \
+    php8.2-sqlite3 \
+    docker.io
+
+# Install Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+# Install Serverless Framework and plugins
+RUN npm install -g serverless@3 \
+    serverless-offline \
+    serverless-localstack \
+    serverless-offline-lambda
+
+# Install AWS CLI
+RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && \
+    unzip awscliv2.zip && \
+    ./aws/install && \
+    rm -rf aws awscliv2.zip
+
+# Set working directory
+WORKDIR /app
+
+# Copy application files first
+COPY . .
+
+# Install Node dependencies if package.json exists
+RUN if [ -f package.json ]; then npm install; fi
+
+# Install PHP dependencies
+RUN composer install --no-dev --optimize-autoloader --no-scripts
+
+# Run composer scripts after everything is copied
+RUN composer run-script post-autoload-dump
+
+# Create directory for lambda runtime
+RUN mkdir -p /tmp/lambda
+
+# Set permissions
+RUN chmod +x deploy.sh env-manager.sh pre-deploy-check.sh aws-setup.sh 2>/dev/null || true
+
+# Default port for serverless offline
+EXPOSE 3000
+
+# Default command
+CMD ["serverless", "offline", "start", "--host", "0.0.0.0", "--stage", "local"]
