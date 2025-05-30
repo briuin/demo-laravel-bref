@@ -53,25 +53,10 @@ services:
     container_name: serverless-local
     ports:
       - "3000:9000"
+    env_file:
+      - .env.local2
     environment:
-      - APP_NAME=Laravel Serverless Local
-      - APP_ENV=local
-      - APP_KEY=base64:RIDHVHIBfZUD7dTyt8KKVKQVhmtaYpJX95WLnn8HOPk=
-      - APP_DEBUG=true
-      - APP_URL=http://localhost:3000
-      - LOG_CHANNEL=stderr
-      - LOG_LEVEL=debug
-      - DB_CONNECTION=sqlite
-      - DB_DATABASE=/app/database/database.sqlite
-      - CACHE_DRIVER=array
-      - SESSION_DRIVER=array
-      - QUEUE_CONNECTION=sync
-      - AWS_DEFAULT_REGION=us-east-1
-      - AWS_ENDPOINT_URL=http://localstack:4566
-      - AWS_ACCESS_KEY_ID=test
-      - AWS_SECRET_ACCESS_KEY=test
-      - AWS_BUCKET=laravel-serverless-local
-      - BREF_BINARY_RESPONSES=1
+      # Override specific Lambda environment variables
       - LAMBDA_TASK_ROOT=/app
       - LAMBDA_RUNTIME_DIR=/var/runtime
       - AWS_LAMBDA_RUNTIME_API=127.0.0.1:9001
